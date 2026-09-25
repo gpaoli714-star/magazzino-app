@@ -3,8 +3,8 @@
   "name": "Magazzino",
   "short_name": "Magazzino",
   "description": "Gestione magazzino, vendite e report giornalieri",
-  "start_url": "https://claude.ai/artifact/8Cjd9DBG6XGzJfe5nzznUz",
-  "scope": "https://claude.ai/",
+  "start_url": "https://gpaoli714-star.github.io/magazzino-app/",
+  "scope": "https://gpaoli714-star.github.io/magazzino-app/",
   "display": "standalone",
   "display_override": [
     "standalone",
