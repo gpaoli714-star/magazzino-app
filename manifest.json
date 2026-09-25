@@ -1,11 +1,25 @@
 {
+  "id": "/magazzino-app/",
   "name": "Magazzino",
   "short_name": "Magazzino",
   "description": "Gestione magazzino, vendite e report giornalieri",
   "start_url": "https://claude.ai/artifact/8Cjd9DBG6XGzJfe5nzznUz",
+  "scope": "https://claude.ai/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
   "background_color": "#F7F7F8",
   "theme_color": "#007AFF",
+  "lang": "it",
+  "dir": "ltr",
+  "categories": [
+    "business",
+    "productivity",
+    "shopping"
+  ],
   "icons": [
     {
       "src": "icon-512.png",
