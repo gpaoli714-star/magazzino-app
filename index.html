@@ -2,20 +2,1437 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Magazzino</title>
-<meta name="theme-color" content="#007AFF">
+<meta name="theme-color" content="#F7F7F8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Magazzino">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-512.png">
-<meta http-equiv="refresh" content="0; url=https://claude.ai/artifact/8Cjd9DBG6XGzJfe5nzznUz">
+<link rel="apple-touch-icon" href="icon-512.png">
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <style>
-  body{font-family:-apple-system,sans-serif;background:#F7F7F8;color:#1C1C1E;
-       display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;}
-  a{color:#007AFF;font-size:17px;}
+  :root{
+    --bg:#F2F2F7;
+    --surface:#FFFFFF;
+    --surface-2:#EFEFF2;
+    --ink:#1C1C1E;
+    --ink-soft:#8A8A8E;
+    --line:#E3E3E8;
+    --accent:#007AFF;
+    --accent-ink:#FFFFFF;
+    --warn:#FF3B30;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.06);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg:#000000; --surface:#1C1C1E; --surface-2:#2C2C2E; --ink:#F2F2F7;
+      --ink-soft:#8E8E93; --line:#38383A; --accent:#0A84FF; --accent-ink:#FFFFFF;
+      --warn:#FF453A;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#000000; --surface:#1C1C1E; --surface-2:#2C2C2E; --ink:#F2F2F7;
+    --ink-soft:#8E8E93; --line:#38383A; --accent:#0A84FF; --accent-ink:#FFFFFF;
+    --warn:#FF453A;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.45);
+  }
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font);
+    min-height:100vh; -webkit-tap-highlight-color:transparent;
+    padding-bottom:calc(40px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px;}
+
+  header.top{
+    position:sticky;top:0;z-index:10;
+    background:color-mix(in srgb, var(--bg) 78%, transparent);
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    padding-top:calc(10px + env(safe-area-inset-top)); padding-bottom:10px;
+    border-bottom:0.5px solid var(--line);
+  }
+  .title-row{display:flex;align-items:center;gap:4px;min-height:40px;}
+  h1{
+    font-weight:800;font-size:30px;margin:0;letter-spacing:-0.02em;flex:1;min-width:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .navbtn{
+    background:none;border:none;color:var(--accent);font-size:17px;font-family:var(--font);
+    cursor:pointer;display:flex;align-items:center;gap:2px;padding:6px 2px;
+  }
+  .navbtn:active{opacity:0.4;}
+  .navbtn.back{padding-left:0;}
+  .navbtn svg{width:22px;height:22px;display:block;}
+  .navbtn.circle{
+    width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+    display:flex;align-items:center;justify-content:center;flex:none;
+  }
+  .navbtn.circle svg{width:17px;height:17px;}
+  .navbtn.circle.ghost{background:var(--surface-2);color:var(--ink);}
+  .nav-actions{display:flex;align-items:center;gap:8px;flex:none;}
+
+  .stat{font-size:13px;color:var(--ink-soft);margin-top:2px;font-variant-numeric:tabular-nums;}
+
+  .ios-search{margin-top:10px;display:flex;align-items:center;gap:8px;}
+  .search-field{
+    flex:1;display:flex;align-items:center;gap:6px;background:var(--surface-2);
+    border-radius:11px;padding:8px 10px;
+  }
+  .search-field svg{width:17px;height:17px;color:var(--ink-soft);flex:none;}
+  .search-field input{
+    border:none;background:transparent;outline:none;font-family:var(--font);font-size:16px;
+    color:var(--ink);flex:1;min-width:0;
+  }
+  .search-field input::placeholder{color:var(--ink-soft);}
+  .cancel-link{
+    border:none;background:none;color:var(--accent);font-size:16px;font-family:var(--font);
+    cursor:pointer;padding:4px 0; white-space:nowrap;
+    max-width:0; opacity:0; overflow:hidden; transition:max-width .22s ease, opacity .18s ease;
+  }
+  .ios-search.editing .cancel-link{max-width:80px;opacity:1;}
+
+  main{padding-top:16px;}
+  .empty{text-align:center;padding:70px 24px;color:var(--ink-soft);}
+  .empty .big{font-size:42px;margin-bottom:12px;}
+  .empty h2{color:var(--ink);font-size:19px;font-weight:600;margin:0 0 6px;}
+  .empty p{font-size:14.5px;margin:0;line-height:1.5;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  .cat-tile{
+    position:relative;border-radius:22px;overflow:hidden;aspect-ratio:1/1;
+    background:var(--surface); cursor:pointer; box-shadow:var(--shadow);
+    transition:transform .12s ease;
+  }
+  .cat-tile:active{transform:scale(0.96);}
+  .cat-tile .cat-img{position:absolute;inset:0;background-size:cover;background-position:center;}
+  .cat-tile .cat-noimg{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:36px;background:var(--surface-2);
+  }
+  .cat-tile .cat-overlay{
+    position:absolute;left:0;right:0;bottom:0;
+    background:linear-gradient(0deg, rgba(0,0,0,0.68), rgba(0,0,0,0));
+    padding:26px 13px 11px;
+  }
+  .cat-tile .cat-name{font-weight:700;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cat-tile .cat-count{font-size:11.5px;color:rgba(255,255,255,0.8);margin-top:1px;}
+
+  .prod-tile{
+    border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow);
+    cursor:pointer; transition:transform .12s ease;
+  }
+  .prod-tile:active{transform:scale(0.96);}
+  .prod-tile .prod-img{
+    aspect-ratio:1/1;background-size:cover;background-position:center;background-color:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;font-size:30px;
+  }
+  .prod-tile .prod-info{padding:10px 11px 11px;}
+  .prod-tile .prod-price{font-weight:700;font-size:15.5px;letter-spacing:-0.01em;}
+  .prod-tile .prod-qtyrow{display:flex;align-items:center;justify-content:space-between;margin-top:7px;}
+  .prod-tile .prod-qtylabel{font-size:11px;color:var(--ink-soft);}
+
+  .qtystep{display:flex;align-items:center;background:var(--surface-2);border-radius:9px;overflow:hidden;}
+  .qtystep button{
+    width:25px;height:25px;border:none;background:transparent;color:var(--accent);
+    font-size:16px;font-weight:600;cursor:pointer;
+  }
+  .qtystep button:first-child{border-right:0.5px solid var(--line);}
+  .qtystep button:last-child{border-left:0.5px solid var(--line);}
+  .qtystep button:active{background:var(--line);}
+  .qtyval{min-width:22px;text-align:center;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;}
+  .qtyval.low{color:var(--warn);}
+
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,0.38);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:40;}
+  .scrim.show{opacity:1;pointer-events:auto;}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;background:var(--bg);
+    border-radius:20px 20px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));
+    transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);z-index:41;
+    max-height:88vh;overflow-y:auto;display:none;
+  }
+  .sheet.show{transform:translateY(0);display:block;}
+  .sheet-handle{width:36px;height:5px;background:var(--line);border-radius:4px;margin:2px auto 10px;}
+  .sheet-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;min-height:30px;}
+  .sheet-topbar h2{font-size:17px;font-weight:600;margin:0;flex:1;text-align:center;}
+  .linkbtn{background:none;border:none;font-size:17px;font-family:var(--font);cursor:pointer;padding:4px 2px;flex:none;}
+  .linkbtn.cancel{color:var(--ink-soft);}
+  .linkbtn.save{color:var(--accent);font-weight:600;}
+  .linkbtn:active{opacity:0.4;}
+
+  .photo-picker-ios{display:flex;flex-direction:column;align-items:center;gap:9px;margin-bottom:18px;}
+  .photo-circle{
+    width:92px;height:92px;border-radius:24px;position:relative;background:var(--surface-2);
+    overflow:hidden;display:block;cursor:pointer;
+  }
+  .photo-preview-img{
+    width:100%;height:100%;background-size:cover;background-position:center;
+    display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:30px;
+  }
+  .photo-badge{
+    position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;
+    background:var(--accent);display:flex;align-items:center;justify-content:center;
+    border:2.5px solid var(--bg); pointer-events:none;
+  }
+  .photo-badge svg{width:14px;height:14px;color:#fff;}
+  .text-remove{background:none;border:none;color:var(--warn);font-size:14.5px;font-family:var(--font);cursor:pointer;padding:2px;}
+
+  .form-group{background:var(--surface);border-radius:14px;overflow:hidden;}
+  .form-row{display:flex;align-items:center;padding:12px 14px;border-bottom:0.5px solid var(--line);gap:10px;min-height:24px;}
+  .form-row:last-child{border-bottom:none;}
+  .form-row label{width:94px;flex:none;font-size:15.5px;color:var(--ink);}
+  .form-row input, .form-row select{
+    border:none;background:transparent;outline:none;text-align:right;padding:0;
+    font-size:15.5px;font-family:var(--font);color:var(--ink-soft);flex:1;min-width:0;
+  }
+  .form-row select{-webkit-appearance:none;appearance:none;text-align-last:right;}
+  .form-row.column{flex-direction:column;align-items:stretch;gap:6px;}
+  .form-row.column label{width:auto;}
+  .form-row.column textarea{
+    border:none;background:transparent;outline:none;resize:vertical;min-height:60px;
+    font-size:15.5px;font-family:var(--font);color:var(--ink);padding:0;
+  }
+  .form-row input::placeholder, .form-row textarea::placeholder{color:var(--ink-soft);}
+
+  .theme-row{
+    width:100%;border:none;background:transparent;color:var(--ink);font-size:15.5px;
+    font-family:var(--font);padding:13px 14px;cursor:pointer;border-bottom:0.5px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;text-align:left;gap:10px;
+  }
+  .theme-row:last-child{border-bottom:none;}
+  .theme-row:active{background:var(--surface-2);}
+  .theme-row .theme-check{color:var(--accent);font-weight:700;opacity:0;flex:none;}
+  .theme-row.active .theme-check{opacity:1;}
+
+  .prod-actions{display:flex;gap:7px;margin-top:9px;}
+  .action-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;
+    background:var(--surface-2);border-radius:11px;padding:7px 4px 6px;cursor:pointer;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  }
+  .action-btn svg{width:16px;height:16px;}
+  .action-btn.sell svg{color:var(--warn);}
+  .action-btn.restock svg{color:var(--accent);}
+  .action-btn .a-label{font-size:10px;color:var(--ink-soft);}
+  .action-btn:active{background:var(--line);}
+
+  .qty-prompt-name{font-size:15px;color:var(--ink-soft);margin-bottom:18px;}
+  .qty-prompt-stepper{display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:6px;}
+  .qty-prompt-btn{
+    width:46px;height:46px;border-radius:50%;border:none;background:var(--surface-2);
+    color:var(--accent);font-size:24px;font-weight:600;cursor:pointer;
+  }
+  .qty-prompt-btn:active{background:var(--line);}
+  .qty-prompt-btn:disabled{opacity:0.3;cursor:default;}
+  .qty-prompt-value{font-size:38px;font-weight:800;min-width:64px;text-align:center;font-variant-numeric:tabular-nums;}
+
+  .confirm-msg{
+    font-size:15.5px;color:var(--ink);line-height:1.5;text-align:center;
+    padding:8px 10px 4px;white-space:pre-line;
+  }
+  .bigbtn.danger{background:var(--warn);}
+  .confirm-cancel{display:block;width:100%;text-align:center;margin-top:8px;padding:12px;}
+
+  .bigbtn{
+    width:100%;background:var(--accent);color:var(--accent-ink);border:none;border-radius:14px;
+    padding:15px;font-size:16px;font-weight:600;font-family:var(--font);cursor:pointer;margin-top:18px;
+  }
+  .bigbtn:active{opacity:0.8;}
+  .bigbtn:disabled{opacity:0.35;cursor:default;}
+  .bigbtn.ghost{background:var(--surface-2);color:var(--accent);}
+
+  .report-cat-header{
+    display:flex;align-items:baseline;justify-content:space-between;
+    padding:14px 14px 6px;
+  }
+  .report-cat-header .rch-name{
+    font-size:12.5px;font-weight:700;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:0.03em;
+  }
+  .report-cat-header .rch-amount{font-size:12.5px;font-weight:700;color:var(--ink-soft);}
+
+  .report-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:0.5px solid var(--line);gap:10px;}
+  .report-row:last-child{border-bottom:none;}
+  .report-row .r-name{font-size:15.5px;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .report-row .r-qty{font-size:13px;color:var(--ink-soft);flex:none;margin:0 8px;}
+  .report-row .r-amount{font-size:15.5px;font-weight:600;color:var(--ink);flex:none;font-variant-numeric:tabular-nums;}
+
+  .total-row{display:flex;align-items:baseline;justify-content:space-between;padding:16px 2px 4px;}
+  .total-row .t-label{font-size:15px;color:var(--ink-soft);}
+  .total-row .t-amount{font-size:24px;font-weight:800;letter-spacing:-0.02em;color:var(--ink);}
+
+  .history-day{background:var(--surface);border-radius:14px;overflow:hidden;margin-bottom:12px;}
+  .history-head{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;cursor:pointer;}
+  .history-head .h-date{font-size:15px;font-weight:600;color:var(--ink);}
+  .history-head .h-sub{font-size:12px;color:var(--ink-soft);margin-top:1px;}
+  .history-head .h-amount{font-size:15.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .history-detail{display:none;border-top:0.5px solid var(--line);}
+  .history-detail.open{display:block;}
+
+  .destructive-row{
+    width:100%;border:none;background:transparent;color:var(--warn);font-size:15.5px;
+    font-weight:500;font-family:var(--font);padding:13px 14px;cursor:pointer;
+  }
+  .destructive-row:active{background:var(--surface-2);}
+
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translate(-50%,0);
+    background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:100px;
+    font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:60;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,-6px);}
+  .status-banner{background:var(--surface-2);color:var(--warn);font-size:13px;padding:11px 14px;border-radius:12px;margin:12px 0;}
 </style>
 </head>
 <body>
-  <p>Apertura di Magazzino in corso&hellip;<br>
-  Se non parte automaticamente, <a href="https://claude.ai/artifact/8Cjd9DBG6XGzJfe5nzznUz">tocca qui</a>.</p>
+
+<header class="top">
+  <div class="wrap">
+    <div class="title-row">
+      <button class="navbtn back" id="backBtn" style="display:none;" aria-label="Indietro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      <h1 id="screenTitle">Magazzino</h1>
+      <div class="nav-actions">
+        <button class="navbtn circle ghost" id="reportBtn" aria-label="Chiudi giornata">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1Z"></path><rect x="5" y="5" width="14" height="16" rx="2"></rect><path d="M9 12h6M9 16h4"></path></svg>
+        </button>
+        <button class="navbtn circle ghost" id="themeBtn" aria-label="Aspetto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor" stroke="none"></path></svg>
+        </button>
+        <button class="navbtn circle ghost" id="editCatBtn" style="display:none;" aria-label="Modifica categoria">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+        </button>
+        <button class="navbtn circle" id="addBtn" aria-label="Aggiungi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+      </div>
+    </div>
+    <div class="stat" id="statLine">Caricamento&hellip;</div>
+    <div class="ios-search" id="searchBarWrap" style="display:none;">
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchInput" placeholder="Cerca prodotto" autocomplete="off">
+      </div>
+      <button class="cancel-link" id="searchCancelBtn">Annulla</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="statusBanner"></div>
+  <div id="categoriesGrid" class="grid"></div>
+  <div id="productsGrid" class="grid" style="display:none;"></div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- Theme sheet -->
+<div class="sheet" id="themeSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-topbar">
+    <div style="width:40px;"></div>
+    <h2>Aspetto</h2>
+    <button class="linkbtn save" id="themeDoneBtn">Fatto</button>
+  </div>
+  <div class="form-group" id="themeOptions">
+    <button class="theme-row" data-theme-value="light">
+      <span>Chiaro</span><span class="theme-check">&#10003;</span>
+    </button>
+    <button class="theme-row" data-theme-value="dark">
+      <span>Scuro</span><span class="theme-check">&#10003;</span>
+    </button>
+    <button class="theme-row" data-theme-value="auto">
+      <span>Automatico (segue il sistema)</span><span class="theme-check">&#10003;</span>
+    </button>
+  </div>
+</div>
+
+<!-- Custom confirm dialog (replaces native confirm(), more reliable in this environment) -->
+<div class="sheet" id="confirmSheet">
+  <div class="sheet-handle"></div>
+  <div class="confirm-msg" id="confirmSheetMsg"></div>
+  <button class="bigbtn danger" id="confirmSheetYesBtn">Conferma</button>
+  <button class="linkbtn cancel confirm-cancel" id="confirmSheetNoBtn">Annulla</button>
+</div>
+
+<!-- Quantity prompt sheet (long-press on Vendi / Carico) -->
+<div class="sheet" id="qtyPromptSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-topbar">
+    <button class="linkbtn cancel" id="qtyPromptCancelBtn">Annulla</button>
+    <h2 id="qtyPromptTitle">Vendita</h2>
+    <div style="width:56px;"></div>
+  </div>
+  <div style="text-align:center;padding:4px 0 6px;">
+    <div id="qtyPromptProductName" class="qty-prompt-name"></div>
+    <div class="qty-prompt-stepper">
+      <button class="qty-prompt-btn" id="qtyPromptMinus" aria-label="Diminuisci">&#8722;</button>
+      <div id="qtyPromptValue" class="qty-prompt-value">1</div>
+      <button class="qty-prompt-btn" id="qtyPromptPlus" aria-label="Aumenta">+</button>
+    </div>
+  </div>
+  <button class="bigbtn" id="qtyPromptConfirmBtn">Conferma</button>
+</div>
+
+<!-- Day report sheet -->
+<div class="sheet" id="daySheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-topbar">
+    <button class="linkbtn cancel" id="dayCancelBtn">Chiudi</button>
+    <h2>Vendite di oggi</h2>
+    <button class="linkbtn save" id="historyOpenBtn">Storico</button>
+  </div>
+  <div id="dayReportBody"></div>
+</div>
+
+<!-- History sheet -->
+<div class="sheet" id="historySheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-topbar">
+    <button class="linkbtn cancel" id="historyBackBtn">&lsaquo; Indietro</button>
+    <h2>Storico</h2>
+    <div style="width:56px;"></div>
+  </div>
+  <div id="historyBody"></div>
+</div>
+
+<!-- Category sheet -->
+<div class="sheet" id="catSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-topbar">
+    <button class="linkbtn cancel" id="catCancelBtn">Annulla</button>
+    <h2 id="catSheetTitle">Nuova categoria</h2>
+    <button class="linkbtn save" id="catSaveBtn">Salva</button>
+  </div>
+  <div class="photo-picker-ios">
+    <label for="catPhotoInput" class="photo-circle">
+      <div class="photo-preview-img" id="catPhotoPreview">&#128193;</div>
+      <div class="photo-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </div>
+    </label>
+    <input type="file" id="catPhotoInput" accept="image/*" style="display:none">
+    <button type="button" id="catRemovePhotoBtn" class="text-remove" style="display:none;">Rimuovi foto</button>
+  </div>
+  <div class="form-group">
+    <div class="form-row"><label for="cName">Nome</label><input type="text" id="cName" placeholder="es. Utensili"></div>
+  </div>
+  <div class="form-group destructive" id="catDeleteRow" style="display:none;margin-top:16px;">
+    <button class="destructive-row" id="catDeleteBtn">Elimina categoria</button>
+  </div>
+</div>
+
+<!-- Product sheet -->
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-topbar">
+    <button class="linkbtn cancel" id="cancelBtn">Annulla</button>
+    <h2 id="sheetTitle">Nuovo prodotto</h2>
+    <button class="linkbtn save" id="saveBtn">Salva</button>
+  </div>
+  <div class="photo-picker-ios">
+    <label for="photoInput" class="photo-circle">
+      <div class="photo-preview-img" id="photoPreview">&#128230;</div>
+      <div class="photo-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </div>
+    </label>
+    <input type="file" id="photoInput" accept="image/*" style="display:none">
+    <button type="button" id="removePhotoBtn" class="text-remove" style="display:none;">Rimuovi foto</button>
+  </div>
+  <div class="form-group">
+    <div class="form-row"><label for="fName">Nome</label><input type="text" id="fName" placeholder="Nome prodotto"></div>
+    <div class="form-row"><label for="fQty">Quantit&agrave;</label><input type="number" id="fQty" placeholder="0" inputmode="numeric"></div>
+    <div class="form-row"><label for="fPrice">Prezzo</label><input type="number" id="fPrice" placeholder="&euro; 0,00" step="0.01" inputmode="decimal"></div>
+    <div class="form-row"><label for="fCategory">Categoria</label><select id="fCategory"></select></div>
+    <div class="form-row"><label for="fSupplier">Fornitore</label><input type="text" id="fSupplier" placeholder="Nessuno"></div>
+  </div>
+  <div class="form-group" style="margin-top:16px;">
+    <div class="form-row column"><label for="fNotes">Note</label><textarea id="fNotes" placeholder="Note aggiuntive&hellip;"></textarea></div>
+  </div>
+  <div class="form-group destructive" id="deleteRow" style="display:none;margin-top:16px;">
+    <button class="destructive-row" id="deleteBtn">Elimina prodotto</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  let db = null;
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD_a7VWy2bbMlINrrfComW9oWu0IT4t53E",
+    authDomain: "magazzino-app-b036d.firebaseapp.com",
+    projectId: "magazzino-app-b036d",
+    storageBucket: "magazzino-app-b036d.firebasestorage.app",
+    messagingSenderId: "327437352853",
+    appId: "1:327437352853:web:218dda7fb40376382a009c"
+  };
+  let categories = [];
+  let products = [];
+  let sales = [];
+  let view = 'categories'; // 'categories' | 'category'
+  let currentCategoryId = null;
+  let searchTerm = '';
+
+  let editingProductId = null;
+  let pendingPhoto = null, pendingPhotoRemoved = false, currentPhotoId = null;
+
+  let editingCategoryId = null;
+  let pendingCatPhoto = null, pendingCatPhotoRemoved = false, currentCatPhotoId = null;
+
+  const $ = (id) => document.getElementById(id);
+  const catGrid = $('categoriesGrid');
+  const prodGrid = $('productsGrid');
+  const statLine = $('statLine');
+  const statusBanner = $('statusBanner');
+  const toastEl = $('toast');
+  const screenTitle = $('screenTitle');
+  const backBtn = $('backBtn');
+  const editCatBtn = $('editCatBtn');
+  const searchBarWrap = $('searchBarWrap');
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(()=> toastEl.classList.remove('show'), 1800);
+  }
+  // Resizes+compresses an image client-side and returns it as a small base64 data URL,
+  // small enough to store directly inside a Firestore document (no separate Storage needed).
+  function compressImageFile(file, maxDim, quality){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if(w >= h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
+          else { if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; } }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => reject(new Error('Immagine non valida'));
+        img.src = ev.target.result;
+      };
+      reader.onerror = () => reject(new Error('Lettura file fallita'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Le scritture Firestore vengono applicate subito in locale e sincronizzate appena c'è connessione.
+  // NON si aspetta la conferma del server: offline resterebbe in attesa all'infinito.
+  function reportSyncError(err){ console.error('Sincronizzazione fallita', err); toast('Errore di sincronizzazione con il server'); }
+  function commitBatch(batch){ batch.commit().catch(reportSyncError); }
+  function fire(promise){ promise.catch(reportSyncError); }
+  function commitInChunks(ops){
+    // ops: array di funzioni (batch) => void ; max 400 operazioni per batch
+    for(let i = 0; i < ops.length; i += 400){
+      const batch = db.batch();
+      ops.slice(i, i + 400).forEach(op => op(batch));
+      commitBatch(batch);
+    }
+  }
+
+  function euro(n){
+    const v = Number(n)||0;
+    return v.toLocaleString('it-IT', {style:'currency', currency:'EUR'});
+  }
+
+  // ---- Rome-timezone date helpers (for automatic day closing) ----
+  const ROME_TZ = 'Europe/Rome';
+  function romeDateKey(d){
+    return new Intl.DateTimeFormat('en-CA', { timeZone: ROME_TZ, year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
+  }
+  function pendingSalesToday(){
+    const todayKey = romeDateKey(new Date());
+    return sales.filter(s => !s.closed && romeDateKey(new Date(s.ts)) === todayKey);
+  }
+  function closedToday(){
+    const todayKey = romeDateKey(new Date());
+    return sales.filter(s => s.closed && s.closedAt && romeDateKey(new Date(s.closedAt)) === todayKey);
+  }
+
+  let autoClosing = false;
+  function autoCloseStaleDays(){
+    if(!db || autoClosing) return;
+    autoClosing = true;
+    try{
+      const todayKey = romeDateKey(new Date());
+      const pending = sales.filter(s => !s.closed && s.ts);
+      const byDay = {};
+      pending.forEach(s => {
+        const k = romeDateKey(new Date(s.ts));
+        if(k !== todayKey){ (byDay[k] = byDay[k] || []).push(s); }
+      });
+      const staleDays = Object.keys(byDay);
+      if(staleDays.length === 0) return;
+      const ops = [];
+      staleDays.forEach(k => {
+        const group = byDay[k];
+        const lastTs = group.reduce((max, s) => (s.ts > max) ? s.ts : max, group[0].ts);
+        group.forEach(s => {
+          ops.push(batch => batch.update(db.collection('sales').doc(s.id), { closed: true, dayId: lastTs, closedAt: lastTs }));
+        });
+      });
+      commitInChunks(ops);
+      toast(staleDays.length === 1
+        ? 'Chiusa automaticamente una giornata precedente rimasta aperta'
+        : 'Chiuse automaticamente ' + staleDays.length + ' giornate precedenti rimaste aperte');
+    }catch(e){ console.error('auto-close fallito', e); }
+    finally{ autoClosing = false; }
+  }
+
+  async function init(){
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+      try {
+        await db.enablePersistence({ synchronizeTabs: true });
+      } catch(persistErr) {
+        console.warn('Persistenza offline non disponibile:', persistErr);
+      }
+    } catch(e){ console.error(e); db = null; }
+
+    if(!db){
+      statusBanner.innerHTML = '<div class="status-banner">Impossibile collegarsi al database. Controlla la connessione o la configurazione.</div>';
+      statLine.textContent = '';
+      return;
+    }
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker non registrato', e));
+    }
+    subscribeCategories();
+    subscribeProducts();
+    subscribeSales();
+    // Catch the case the app stays open across midnight (Rome time) with no new sales to trigger a snapshot.
+    setInterval(autoCloseStaleDays, 10 * 60 * 1000);
+  }
+
+  function subscribeSales(){
+    db.collection('sales').onSnapshot((snap)=>{
+      sales = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      autoCloseStaleDays();
+      if(openSheetEl === $('daySheet')) renderDayReport();
+      if(openSheetEl === $('historySheet')) renderHistory();
+    }, (err)=>{
+      console.error(err);
+    });
+  }
+
+  function subscribeCategories(){
+    db.collection('categories').onSnapshot((snap)=>{
+      categories = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      populateCategorySelect();
+      render();
+    }, (err)=>{
+      console.error(err);
+      statusBanner.innerHTML = '<div class="status-banner">Errore di sincronizzazione categorie.</div>';
+    });
+  }
+
+  function subscribeProducts(){
+    db.collection('products').onSnapshot((snap)=>{
+      products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    }, (err)=>{
+      console.error(err);
+      statusBanner.innerHTML = '<div class="status-banner">Errore di sincronizzazione prodotti.</div>';
+    });
+  }
+
+  function productsInCategory(catId){
+    return products.filter(p => p.categoryId === catId);
+  }
+
+  function render(){
+    if(view === 'categories'){ renderCategoriesScreen(); }
+    else { renderCategoryScreen(); }
+  }
+
+  function renderCategoriesScreen(){
+    backBtn.style.display = 'none';
+    editCatBtn.style.display = 'none';
+    searchBarWrap.style.display = 'none';
+    screenTitle.textContent = 'Magazzino';
+    prodGrid.style.display = 'none';
+    catGrid.style.display = 'grid';
+
+    const totalProducts = products.length;
+    statLine.textContent = (categories.length === 0 ? 'Nessuna categoria ancora' :
+      categories.length + (categories.length===1 ? ' categoria' : ' categorie') + ' \u00b7 ' + totalProducts + (totalProducts===1 ? ' prodotto' : ' prodotti'));
+
+    catGrid.innerHTML = '';
+    if(categories.length === 0){
+      catGrid.style.display = 'block';
+      catGrid.innerHTML = '<div class="empty"><div class="big">\uD83D\uDDC2\uFE0F</div><h2>Nessuna categoria</h2><p>Tocca + in alto per creare<br>la prima macro categoria.</p></div>';
+      return;
+    }
+    const sorted = categories.slice().sort((a,b)=> (a.name||'').localeCompare(b.name||'','it'));
+    sorted.forEach(cat => {
+      const count = productsInCategory(cat.id).length;
+      const tile = document.createElement('div');
+      tile.className = 'cat-tile';
+      tile.onclick = () => openCategory(cat.id);
+      const img = document.createElement('div');
+      if(cat.photoData){
+        img.className = 'cat-img';
+        img.style.backgroundImage = "url('" + cat.photoData + "')";
+      } else {
+        img.className = 'cat-noimg';
+        img.textContent = '\uD83D\uDDC2\uFE0F';
+      }
+      const overlay = document.createElement('div');
+      overlay.className = 'cat-overlay';
+      overlay.innerHTML = '<div class="cat-name"></div><div class="cat-count"></div>';
+      overlay.querySelector('.cat-name').textContent = cat.name || '(senza nome)';
+      overlay.querySelector('.cat-count').textContent = count + (count===1 ? ' prodotto' : ' prodotti');
+      tile.appendChild(img);
+      tile.appendChild(overlay);
+      catGrid.appendChild(tile);
+    });
+  }
+
+  function renderCategoryScreen(){
+    const cat = categories.find(c => c.id === currentCategoryId);
+    if(!cat){ view = 'categories'; render(); return; }
+
+    backBtn.style.display = 'flex';
+    editCatBtn.style.display = 'flex';
+    searchBarWrap.style.display = 'flex';
+    screenTitle.textContent = cat.name || '(senza nome)';
+    catGrid.style.display = 'none';
+    prodGrid.style.display = 'grid';
+
+    let list = productsInCategory(cat.id);
+    if(searchTerm.trim()){
+      const q = searchTerm.trim().toLowerCase();
+      list = list.filter(p => (p.name||'').toLowerCase().includes(q) || (p.supplier||'').toLowerCase().includes(q));
+    }
+    list.sort((a,b)=> (a.name||'').localeCompare(b.name||'','it'));
+
+    const totalValue = list.reduce((s,p)=> s + (Number(p.qty)||0)*(Number(p.price)||0), 0);
+    statLine.textContent = list.length === 0 ? 'Nessun prodotto'
+      : list.length + (list.length===1 ? ' prodotto' : ' prodotti') + ' \u00b7 valore ' + euro(totalValue);
+
+    prodGrid.innerHTML = '';
+    if(productsInCategory(cat.id).length === 0){
+      prodGrid.style.display = 'block';
+      prodGrid.innerHTML = '<div class="empty"><div class="big">\uD83D\uDCE6</div><h2>Categoria vuota</h2><p>Tocca + in alto per aggiungere<br>un prodotto qui dentro.</p></div>';
+      return;
+    }
+    if(list.length === 0){
+      prodGrid.style.display = 'block';
+      prodGrid.innerHTML = '<div class="empty"><div class="big">\uD83D\uDD0D</div><h2>Nessun risultato</h2><p>Prova a cambiare la ricerca.</p></div>';
+      return;
+    }
+
+    list.forEach(p => {
+      const tile = document.createElement('div');
+      tile.className = 'prod-tile';
+      tile.onclick = (e) => { if(e.target.closest('.prod-actions')) return; openEditProduct(p); };
+
+      const img = document.createElement('div');
+      img.className = 'prod-img';
+      if(p.photoData){ img.style.backgroundImage = "url('" + p.photoData + "')"; }
+      else { img.textContent = '\uD83D\uDCE6'; }
+
+      const info = document.createElement('div');
+      info.className = 'prod-info';
+      const price = document.createElement('div');
+      price.className = 'prod-price';
+      price.textContent = euro(p.price);
+
+      const qtyrow = document.createElement('div');
+      qtyrow.className = 'prod-qtyrow';
+      const qtyLabel = document.createElement('div');
+      qtyLabel.className = 'prod-qtylabel';
+      qtyLabel.textContent = 'Disponibili';
+      const qtyval = document.createElement('div');
+      qtyval.className = 'qtyval' + ((Number(p.qty)||0) <= 0 ? ' low' : '');
+      qtyval.textContent = Number(p.qty)||0;
+      qtyrow.appendChild(qtyLabel); qtyrow.appendChild(qtyval);
+
+      const actions = document.createElement('div');
+      actions.className = 'prod-actions';
+      const sellBtn = makeActionButton('sell', 'Vendi',
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
+        p, 'sell');
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'action-btn undo';
+      undoBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M3 13a9 9 0 1 0 3-6.7L3 9"></path></svg><span class="a-label">Annulla</span>';
+      undoBtn.oncontextmenu = (e) => e.preventDefault();
+      undoBtn.onclick = () => undoLastSale(p);
+      actions.appendChild(sellBtn);
+      actions.appendChild(undoBtn);
+
+      info.appendChild(price);
+      info.appendChild(qtyrow);
+      info.appendChild(actions);
+      tile.appendChild(img);
+      tile.appendChild(info);
+      prodGrid.appendChild(tile);
+    });
+  }
+
+  // Builds a sell/restock button: tap = 1 unit immediately, long-press = quantity prompt.
+  function makeActionButton(cls, label, iconSvg, product, mode){
+    const btn = document.createElement('button');
+    btn.className = 'action-btn ' + cls;
+    btn.innerHTML = iconSvg + '<span class="a-label">' + label + '</span>';
+    btn.oncontextmenu = (e) => e.preventDefault();
+
+    let pressTimer = null;
+    let longPressFired = false;
+
+    const start = (e) => {
+      longPressFired = false;
+      pressTimer = setTimeout(() => {
+        longPressFired = true;
+        if(navigator.vibrate) { try{ navigator.vibrate(12); }catch(err){} }
+        openQtyPrompt(product, mode);
+      }, 480);
+    };
+    const cancel = () => { if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; } };
+    const end = (e) => {
+      cancel();
+      if(longPressFired){ longPressFired = false; return; }
+      sellProduct(product, 1);
+    };
+
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', end);
+    btn.addEventListener('pointerleave', cancel);
+    btn.addEventListener('pointercancel', cancel);
+    return btn;
+  }
+
+
+  const inc = (n) => firebase.firestore.FieldValue.increment(n);
+
+  function sellProduct(p, qty){
+    const cur = products.find(x => x.id === p.id) || p;
+    const before = Number(cur.qty)||0;
+    const wanted = Math.max(1, Number(qty)||1);
+    const actuallySold = Math.min(before, wanted);
+    if(actuallySold <= 0){ toast('Nessuna giacenza disponibile'); return; }
+    const now = new Date().toISOString();
+    const batch = db.batch();
+    batch.update(db.collection('products').doc(p.id), { qty: inc(-actuallySold), updatedAt: now });
+    batch.set(db.collection('sales').doc(), {
+      productId: p.id,
+      productName: cur.name || '(senza nome)',
+      categoryId: cur.categoryId || null,
+      price: Number(cur.price)||0,
+      qty: actuallySold,
+      ts: now,
+      closed: false,
+      dayId: null,
+      closedAt: null
+    });
+    commitBatch(batch);
+    if(actuallySold < wanted) toast('Venduti solo ' + actuallySold + ' (giacenza esaurita)');
+  }
+
+  async function undoLastSale(p){
+    const candidates = sales
+      .filter(s => !s.closed && s.productId === p.id)
+      .sort((a,b)=> (b.ts||'').localeCompare(a.ts||''));
+    if(candidates.length === 0){ toast('Nessuna vendita recente da annullare'); return; }
+    const last = candidates[0];
+    const qty = Number(last.qty)||0;
+    const msg = 'Annullare la vendita di ' + qty + (qty===1?' pezzo':' pezzi') + ' di "' + (p.name||last.productName||'') + '"?';
+    if(!(await showConfirm(msg, 'Annulla vendita'))) return;
+    const batch = db.batch();
+    batch.update(db.collection('products').doc(p.id), { qty: inc(qty), updatedAt: new Date().toISOString() });
+    batch.delete(db.collection('sales').doc(last.id));
+    commitBatch(batch);
+    toast('Vendita annullata');
+  }
+
+  // ---- Quantity prompt: 'sell' (long-press Vendi) or 'editsale' (fix a row in the day report) ----
+  let qtyPromptProduct = null, qtyPromptMode = null, qtyPromptValue = 1, qtyPromptEditCtx = null, qtyPromptMax = Infinity;
+
+  function openQtyPrompt(product, mode){
+    const stock = Number(product.qty)||0;
+    if(stock <= 0){ toast('Nessuna giacenza disponibile per la vendita'); return; }
+    qtyPromptProduct = product;
+    qtyPromptMode = mode;
+    qtyPromptValue = 1;
+    qtyPromptMax = stock;
+    $('qtyPromptTitle').textContent = 'Vendita';
+    $('qtyPromptProductName').textContent = product.name || '(senza nome)';
+    renderQtyPromptValue();
+    openSheet($('qtyPromptSheet'));
+  }
+
+  function openEditSalePrompt(group){
+    qtyPromptMode = 'editsale';
+    qtyPromptProduct = null;
+    qtyPromptEditCtx = group;
+    qtyPromptValue = group.qty;
+    const prod = products.find(pp => pp.id === group.id);
+    // Can't set the sold total higher than what's currently in stock plus what's already counted as sold today.
+    qtyPromptMax = (prod ? Number(prod.qty)||0 : 0) + group.qty;
+    $('qtyPromptTitle').textContent = 'Modifica vendita';
+    $('qtyPromptProductName').textContent = group.name || '(senza nome)';
+    renderQtyPromptValue();
+    openSheet($('qtyPromptSheet'));
+  }
+
+  function renderQtyPromptValue(){
+    $('qtyPromptValue').textContent = qtyPromptValue;
+    $('qtyPromptPlus').disabled = qtyPromptValue >= qtyPromptMax;
+    if(qtyPromptMode === 'editsale'){
+      $('qtyPromptConfirmBtn').textContent = qtyPromptValue === 0 ? 'Rimuovi articolo' : 'Salva modifica';
+    } else {
+      $('qtyPromptConfirmBtn').textContent = 'Conferma vendita';
+    }
+  }
+  $('qtyPromptMinus').onclick = () => {
+    const min = qtyPromptMode === 'editsale' ? 0 : 1;
+    qtyPromptValue = Math.max(min, qtyPromptValue - 1);
+    renderQtyPromptValue();
+  };
+  $('qtyPromptPlus').onclick = () => {
+    if(qtyPromptValue >= qtyPromptMax){ toast('Non puoi superare la giacenza disponibile'); return; }
+    qtyPromptValue = qtyPromptValue + 1;
+    renderQtyPromptValue();
+  };
+  $('qtyPromptCancelBtn').onclick = () => {
+    if(qtyPromptMode === 'editsale'){ renderDayReport(); openSheet($('daySheet')); }
+    else { closeSheet(); }
+  };
+  $('qtyPromptConfirmBtn').onclick = () => {
+    if(qtyPromptMode === 'sell'){
+      if(!qtyPromptProduct) return;
+      sellProduct(qtyPromptProduct, qtyPromptValue);
+      closeSheet();
+    } else if(qtyPromptMode === 'editsale'){
+      applyEditSale(qtyPromptEditCtx, qtyPromptValue);
+    }
+  };
+
+  async function applyEditSale(group, newTotal){
+    if(!group) return;
+    if(newTotal === group.qty){ renderDayReport(); openSheet($('daySheet')); return; }
+    if(newTotal === 0){
+      if(!(await showConfirm('Rimuovere "' + group.name + '" dalle vendite di oggi? La quantit\u00e0 torner\u00e0 in giacenza.', 'Rimuovi'))) {
+        renderDayReport(); openSheet($('daySheet')); return;
+      }
+    }
+    const targetDocs = pendingSalesToday().filter(s => (s.productId || s.productName) === group.key);
+    const delta = group.qty - newTotal; // positivo => si restituisce merce alla giacenza
+    const now = new Date().toISOString();
+    const prod = products.find(pp => pp.id === group.id);
+    const batch = db.batch();
+    if(prod){
+      batch.update(db.collection('products').doc(prod.id), { qty: inc(delta), updatedAt: now });
+    }
+    targetDocs.forEach(d => batch.delete(db.collection('sales').doc(d.id)));
+    if(newTotal > 0){
+      batch.set(db.collection('sales').doc(), {
+        productId: group.id || null,
+        productName: group.name,
+        categoryId: (prod && prod.categoryId) || null,
+        price: group.qty > 0 ? (group.revenue / group.qty) : (prod ? Number(prod.price)||0 : 0),
+        qty: newTotal,
+        ts: now,
+        closed: false, dayId: null, closedAt: null
+      });
+    }
+    commitBatch(batch);
+    toast('Vendita aggiornata');
+    renderDayReport();
+    openSheet($('daySheet'));
+  }
+
+  // ---- Day report / history ----
+  function groupSales(list){
+    const map = {};
+    list.forEach(s => {
+      const key = s.productId || s.productName;
+      if(!map[key]) map[key] = { key, id: s.productId || null, name: s.productName, qty: 0, revenue: 0 };
+      map[key].qty += Number(s.qty)||0;
+      map[key].revenue += (Number(s.qty)||0) * (Number(s.price)||0);
+    });
+    return Object.values(map).sort((a,b)=> b.revenue - a.revenue);
+  }
+
+  function groupSalesByCategory(list){
+    const byCat = {};
+    list.forEach(s => {
+      const catId = s.categoryId || 'none';
+      if(!byCat[catId]) byCat[catId] = [];
+      byCat[catId].push(s);
+    });
+    const cats = Object.keys(byCat).map(catId => {
+      const cat = categories.find(c => c.id === catId);
+      const products = groupSales(byCat[catId]);
+      const total = products.reduce((s,g)=> s + g.revenue, 0);
+      const qty = products.reduce((s,g)=> s + g.qty, 0);
+      return { catId, catName: cat ? (cat.name || '(senza nome)') : 'Senza categoria', products, total, qty };
+    });
+    cats.sort((a,b) => {
+      if(a.catId === 'none') return 1;
+      if(b.catId === 'none') return -1;
+      return a.catName.localeCompare(b.catName, 'it');
+    });
+    return cats;
+  }
+
+  function renderDayReport(){
+    const body = $('dayReportBody');
+    const pending = pendingSalesToday();
+    const grouped = groupSales(pending);
+    const catGroups = groupSalesByCategory(pending);
+    const total = grouped.reduce((s,g)=> s + g.revenue, 0);
+    const totalQty = grouped.reduce((s,g)=> s + g.qty, 0);
+    const closedTodayList = closedToday();
+
+    if(grouped.length === 0){
+      if(closedTodayList.length > 0){
+        const closedGrouped = groupSales(closedTodayList);
+        const closedTotal = closedGrouped.reduce((s,g)=> s + g.revenue, 0);
+        body.innerHTML = '<div class="empty" style="padding:34px 10px 20px;"><div class="big">\u2705</div><h2>Giornata gi\u00e0 chiusa</h2><p>Hai gi\u00e0 chiuso oggi con un totale di ' + euro(closedTotal) + '.<br>Puoi riaprirla se vuoi continuare a segnare vendite.</p></div><button class="bigbtn ghost" id="reopenDayBtn">Riapri giornata</button>';
+        $('reopenDayBtn').onclick = () => reopenToday();
+      } else {
+        body.innerHTML = '<div class="empty" style="padding:40px 10px;"><div class="big">\uD83E\uDDFE</div><h2>Nessuna vendita oggi</h2><p>Le vendite si registrano quando tocchi<br>\u201cVendi\u201d su un prodotto.</p></div>';
+      }
+      return;
+    }
+
+    let html = '';
+    catGroups.forEach((cg, ci) => {
+      html += '<div class="report-cat-header"><span class="rch-name"></span><span class="rch-amount"></span></div>';
+      html += '<div class="form-group" style="margin-bottom:14px;">';
+      cg.products.forEach(() => {
+        html += '<div class="report-row" style="cursor:pointer;"><div class="r-name"></div><div class="r-qty"></div><div class="r-amount"></div></div>';
+      });
+      html += '</div>';
+    });
+    html += '<div class="stat" style="margin:2px 2px 0;">Tocca un prodotto per correggere quantit\u00e0 o rimuoverlo</div>';
+    html += '<div class="total-row"><div class="t-label">Totale (' + totalQty + (totalQty===1?' pezzo':' pezzi') + ')</div><div class="t-amount"></div></div>';
+    if(closedTodayList.length > 0){
+      html += '<button class="bigbtn ghost" id="reopenDayBtn" style="margin-top:10px;">Riapri chiusura precedente di oggi</button>';
+    }
+    html += '<button class="bigbtn" id="confirmCloseDayBtn">Chiudi giornata</button>';
+    body.innerHTML = html;
+    if(closedTodayList.length > 0){ $('reopenDayBtn').onclick = () => reopenToday(); }
+
+    const catHeaders = body.querySelectorAll('.report-cat-header');
+    const rowGroups = body.querySelectorAll('.form-group');
+    catGroups.forEach((cg, ci) => {
+      catHeaders[ci].querySelector('.rch-name').textContent = cg.catName;
+      catHeaders[ci].querySelector('.rch-amount').textContent = euro(cg.total);
+      const rows = rowGroups[ci].querySelectorAll('.report-row');
+      cg.products.forEach((g, i) => {
+        rows[i].querySelector('.r-name').textContent = g.name;
+        rows[i].querySelector('.r-qty').textContent = g.qty + '\u00d7';
+        rows[i].querySelector('.r-amount').textContent = euro(g.revenue);
+        rows[i].onclick = () => openEditSalePrompt(g);
+      });
+    });
+    body.querySelector('.t-amount').textContent = euro(total);
+
+    $('confirmCloseDayBtn').onclick = async () => {
+      const msg = 'Confermi la chiusura della giornata?\n' + totalQty + (totalQty===1?' pezzo venduto':' pezzi venduti') + ' \u00b7 totale ' + euro(total);
+      if(!(await showConfirm(msg, 'Chiudi giornata'))) { renderDayReport(); openSheet($('daySheet')); return; }
+      const closedAt = new Date().toISOString();
+      commitInChunks(pending.map(s => (batch) =>
+        batch.update(db.collection('sales').doc(s.id), { closed: true, dayId: closedAt, closedAt: closedAt })
+      ));
+      toast('Giornata chiusa: ' + euro(total));
+      closeSheet();
+    };
+  }
+
+  async function reopenToday(){
+    const list = closedToday();
+    if(list.length === 0) return;
+    const grouped = groupSales(list);
+    const totalQty = grouped.reduce((s,g)=> s + g.qty, 0);
+    const totalRevenue = grouped.reduce((s,g)=> s + g.revenue, 0);
+    const msg = 'Riaprire la giornata?\n' + totalQty + (totalQty===1?' pezzo':' pezzi') + ' \u00b7 totale ' + euro(totalRevenue) + ' torneranno tra le vendite aperte di oggi.';
+    if(!(await showConfirm(msg, 'Riapri giornata'))) { renderDayReport(); openSheet($('daySheet')); return; }
+    commitInChunks(list.map(s => (batch) =>
+      batch.update(db.collection('sales').doc(s.id), { closed: false, dayId: null, closedAt: null })
+    ));
+    toast('Giornata riaperta');
+    renderDayReport();
+    openSheet($('daySheet'));
+  }
+
+  function renderHistory(){
+    const body = $('historyBody');
+    const closedSales = sales.filter(s => s.closed && s.closedAt);
+    const days = {};
+    closedSales.forEach(s => {
+      const dateKey = romeDateKey(new Date(s.closedAt));
+      if(!days[dateKey]) days[dateKey] = { dateKey, lastClosedAt: s.closedAt, items: [], dayIds: new Set() };
+      days[dateKey].items.push(s);
+      days[dateKey].dayIds.add(s.dayId);
+      if(s.closedAt > days[dateKey].lastClosedAt) days[dateKey].lastClosedAt = s.closedAt;
+    });
+    const list = Object.values(days).sort((a,b)=> b.dateKey.localeCompare(a.dateKey));
+
+    if(list.length === 0){
+      body.innerHTML = '<div class="empty" style="padding:40px 10px;"><div class="big">\uD83D\uDDC3\uFE0F</div><h2>Nessuna giornata chiusa</h2><p>Le giornate chiuse compariranno qui.</p></div>';
+      return;
+    }
+
+    body.innerHTML = '';
+    list.forEach((day, idx) => {
+      const grouped = groupSales(day.items);
+      const total = grouped.reduce((s,g)=> s + g.revenue, 0);
+      const totalQty = grouped.reduce((s,g)=> s + g.qty, 0);
+      const [yy, mm, dd] = day.dateKey.split('-').map(Number);
+      const dObj = new Date(Date.UTC(yy, mm-1, dd, 12));
+      const dateLabel = dObj.toLocaleDateString('it-IT', {day:'numeric', month:'long', year:'numeric', timeZone: ROME_TZ});
+      const timeLabel = day.lastClosedAt ? new Date(day.lastClosedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit', timeZone: ROME_TZ}) : '';
+      const closureCount = day.dayIds.size;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'history-day';
+      const head = document.createElement('div');
+      head.className = 'history-head';
+      head.innerHTML = '<div><div class="h-date"></div><div class="h-sub"></div></div><div class="h-amount"></div>';
+      head.querySelector('.h-date').textContent = dateLabel;
+      head.querySelector('.h-sub').textContent = (closureCount > 1
+        ? ('Chiusa ' + closureCount + ' volte \u00b7 ultima alle ' + timeLabel)
+        : ('Chiusa alle ' + timeLabel)) + ' \u00b7 ' + totalQty + (totalQty===1?' pezzo':' pezzi');
+      head.querySelector('.h-amount').textContent = euro(total);
+
+      const detail = document.createElement('div');
+      detail.className = 'history-detail';
+      const dayCatGroups = groupSalesByCategory(day.items);
+      dayCatGroups.forEach(cg => {
+        const catHead = document.createElement('div');
+        catHead.className = 'report-cat-header';
+        catHead.innerHTML = '<span class="rch-name"></span><span class="rch-amount"></span>';
+        catHead.querySelector('.rch-name').textContent = cg.catName;
+        catHead.querySelector('.rch-amount').textContent = euro(cg.total);
+        detail.appendChild(catHead);
+
+        cg.products.forEach(g => {
+          const row = document.createElement('div');
+          row.className = 'report-row';
+          row.innerHTML = '<div class="r-name"></div><div class="r-qty"></div><div class="r-amount"></div>';
+          row.querySelector('.r-name').textContent = g.name;
+          row.querySelector('.r-qty').textContent = g.qty + '\u00d7';
+          row.querySelector('.r-amount').textContent = euro(g.revenue);
+          detail.appendChild(row);
+        });
+      });
+
+      head.onclick = () => { detail.classList.toggle('open'); };
+      wrap.appendChild(head);
+      wrap.appendChild(detail);
+      body.appendChild(wrap);
+    });
+  }
+
+  $('reportBtn').onclick = () => { renderDayReport(); openSheet($('daySheet')); };
+  $('dayCancelBtn').onclick = closeSheet;
+  $('historyOpenBtn').onclick = () => { renderHistory(); openSheet($('historySheet')); };
+  $('historyBackBtn').onclick = () => { renderDayReport(); openSheet($('daySheet')); };
+
+  function openCategory(id){
+    currentCategoryId = id;
+    view = 'category';
+    searchTerm = '';
+    $('searchInput').value = '';
+    searchBarWrap.classList.remove('editing');
+    render();
+  }
+
+  backBtn.onclick = () => { view = 'categories'; currentCategoryId = null; render(); };
+
+  $('searchInput').oninput = (e) => { searchTerm = e.target.value; render(); };
+  $('searchInput').onfocus = () => { searchBarWrap.classList.add('editing'); };
+  $('searchCancelBtn').onclick = () => {
+    $('searchInput').value = '';
+    searchTerm = '';
+    $('searchInput').blur();
+    searchBarWrap.classList.remove('editing');
+    render();
+  };
+
+  // ---- shared sheet helpers ----
+  const scrim = $('scrim');
+  let openSheetEl = null;
+  function openSheet(el){
+    if(openSheetEl && openSheetEl !== el) openSheetEl.classList.remove('show');
+    openSheetEl = el;
+    scrim.classList.add('show');
+    el.classList.add('show');
+  }
+  function closeSheet(){
+    if(openSheetEl) openSheetEl.classList.remove('show');
+    openSheetEl = null;
+    scrim.classList.remove('show');
+  }
+  scrim.onclick = closeSheet;
+
+  // ---- Custom confirm dialog (replaces native confirm()) ----
+  let confirmResolver = null;
+  function showConfirm(message, confirmLabel){
+    return new Promise((resolve) => {
+      confirmResolver = resolve;
+      $('confirmSheetMsg').textContent = message;
+      $('confirmSheetYesBtn').textContent = confirmLabel || 'Conferma';
+      openSheet($('confirmSheet'));
+    });
+  }
+  $('confirmSheetYesBtn').onclick = () => {
+    const r = confirmResolver; confirmResolver = null;
+    closeSheet();
+    if(r) r(true);
+  };
+  $('confirmSheetNoBtn').onclick = () => {
+    const r = confirmResolver; confirmResolver = null;
+    closeSheet();
+    if(r) r(false);
+  };
+
+  // ---- Theme (Chiaro / Scuro / Automatico) ----
+  const THEME_KEY = 'magazzino-theme';
+  function applyTheme(value){
+    if(value === 'light' || value === 'dark'){
+      document.documentElement.setAttribute('data-theme', value);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      value = 'auto';
+    }
+    document.querySelectorAll('.theme-row').forEach(row => {
+      row.classList.toggle('active', row.getAttribute('data-theme-value') === value);
+    });
+    try{ localStorage.setItem(THEME_KEY, value); }catch(e){}
+  }
+  function loadTheme(){
+    let saved = 'auto';
+    try{ saved = localStorage.getItem(THEME_KEY) || 'auto'; }catch(e){}
+    applyTheme(saved);
+  }
+  document.querySelectorAll('.theme-row').forEach(row => {
+    row.onclick = () => applyTheme(row.getAttribute('data-theme-value'));
+  });
+  $('themeBtn').onclick = () => openSheet($('themeSheet'));
+  $('themeDoneBtn').onclick = closeSheet;
+  loadTheme();
+
+  // ---- Category sheet ----
+  function resetCatForm(){
+    editingCategoryId = null;
+    pendingCatPhoto = null; pendingCatPhotoRemoved = false; currentCatPhotoId = null;
+    $('cName').value = '';
+    $('catPhotoPreview').style.backgroundImage = '';
+    $('catPhotoPreview').textContent = '\uD83D\uDDC2\uFE0F';
+    $('catRemovePhotoBtn').style.display = 'none';
+    $('catDeleteRow').style.display = 'none';
+    $('catSheetTitle').textContent = 'Nuova categoria';
+  }
+  function openAddCategory(){ resetCatForm(); openSheet($('catSheet')); }
+  function openEditCategory(cat){
+    resetCatForm();
+    editingCategoryId = cat.id;
+    currentCatPhotoId = cat.photoData || null;
+    $('cName').value = cat.name || '';
+    if(cat.photoData){
+      $('catPhotoPreview').style.backgroundImage = "url('" + cat.photoData + "')";
+      $('catPhotoPreview').textContent = '';
+      $('catRemovePhotoBtn').style.display = 'inline-block';
+    }
+    $('catDeleteRow').style.display = 'block';
+    $('catSheetTitle').textContent = 'Modifica categoria';
+    openSheet($('catSheet'));
+  }
+
+  $('catPhotoInput').onchange = async (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    try{
+      const dataUrl = await compressImageFile(file, 480, 0.72);
+      pendingCatPhoto = dataUrl; pendingCatPhotoRemoved = false;
+      $('catPhotoPreview').style.backgroundImage = "url('" + dataUrl + "')";
+      $('catPhotoPreview').textContent = '';
+      $('catRemovePhotoBtn').style.display = 'inline-block';
+    }catch(err){ console.error(err); toast('Errore nel caricamento della foto'); }
+  };
+  $('catRemovePhotoBtn').onclick = () => {
+    pendingCatPhoto = null; pendingCatPhotoRemoved = true;
+    $('catPhotoPreview').style.backgroundImage = '';
+    $('catPhotoPreview').textContent = '\uD83D\uDDC2\uFE0F';
+    $('catRemovePhotoBtn').style.display = 'none';
+    $('catPhotoInput').value = '';
+  };
+  $('catCancelBtn').onclick = closeSheet;
+
+  $('catSaveBtn').onclick = () => {
+    if(!db){ toast('Salvataggio non disponibile'); return; }
+    const name = $('cName').value.trim();
+    if(!name){ toast('Inserisci il nome della categoria'); $('cName').focus(); return; }
+    let photoData = currentCatPhotoId;
+    if(pendingCatPhotoRemoved) photoData = null;
+    if(pendingCatPhoto) photoData = pendingCatPhoto;
+    const data = { name, photoData: photoData || null };
+    if(editingCategoryId){
+      fire(db.collection('categories').doc(editingCategoryId).update(data));
+      toast('Categoria aggiornata');
+    } else {
+      data.createdAt = new Date().toISOString();
+      fire(db.collection('categories').doc().set(data));
+      toast('Categoria creata');
+    }
+    closeSheet();
+  };
+
+  $('catDeleteBtn').onclick = async () => {
+    if(!editingCategoryId) return;
+    const count = productsInCategory(editingCategoryId).length;
+    const msg = count > 0
+      ? ('Questa categoria contiene ' + count + (count===1?' prodotto':' prodotti') + '. Eliminandola verranno eliminati anche i prodotti al suo interno. Continuare?')
+      : 'Eliminare questa categoria?';
+    if(!(await showConfirm(msg, 'Elimina'))) { openSheet($('catSheet')); return; }
+    const catId = editingCategoryId;
+    const ops = productsInCategory(catId).map(p => (batch) => batch.delete(db.collection('products').doc(p.id)));
+    ops.push((batch) => batch.delete(db.collection('categories').doc(catId)));
+    commitInChunks(ops);
+    toast('Categoria eliminata');
+    closeSheet();
+    view = 'categories'; currentCategoryId = null; render();
+  };
+
+  $('addBtn').onclick = () => {
+    if(view === 'categories') openAddCategory();
+    else openAddProduct();
+  };
+  editCatBtn.onclick = () => {
+    const cat = categories.find(c => c.id === currentCategoryId);
+    if(cat) openEditCategory(cat);
+  };
+
+  // ---- Product sheet ----
+  function populateCategorySelect(){
+    const sel = $('fCategory');
+    const prevVal = sel.value;
+    sel.innerHTML = '';
+    const sorted = categories.slice().sort((a,b)=> (a.name||'').localeCompare(b.name||'','it'));
+    sorted.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.name || '(senza nome)';
+      sel.appendChild(opt);
+    });
+    if(prevVal) sel.value = prevVal;
+  }
+
+  function resetProdForm(){
+    editingProductId = null;
+    pendingPhoto = null; pendingPhotoRemoved = false; currentPhotoId = null;
+    $('fName').value = ''; $('fQty').value = ''; $('fPrice').value = '';
+    $('fSupplier').value = ''; $('fNotes').value = '';
+    $('photoPreview').style.backgroundImage = '';
+    $('photoPreview').textContent = '\uD83D\uDCE6';
+    $('removePhotoBtn').style.display = 'none';
+    $('deleteRow').style.display = 'none';
+    $('sheetTitle').textContent = 'Nuovo prodotto';
+  }
+  function openAddProduct(){
+    resetProdForm();
+    populateCategorySelect();
+    if(currentCategoryId) $('fCategory').value = currentCategoryId;
+    openSheet($('sheet'));
+  }
+  function openEditProduct(p){
+    resetProdForm();
+    editingProductId = p.id;
+    currentPhotoId = p.photoData || null;
+    $('fName').value = p.name || '';
+    $('fQty').value = (p.qty!=null) ? p.qty : '';
+    $('fPrice').value = (p.price!=null) ? p.price : '';
+    $('fSupplier').value = p.supplier || '';
+    $('fNotes').value = p.notes || '';
+    populateCategorySelect();
+    if(p.categoryId) $('fCategory').value = p.categoryId;
+    if(p.photoData){
+      $('photoPreview').style.backgroundImage = "url('" + p.photoData + "')";
+      $('photoPreview').textContent = '';
+      $('removePhotoBtn').style.display = 'inline-block';
+    }
+    $('deleteRow').style.display = 'block';
+    $('sheetTitle').textContent = 'Modifica prodotto';
+    openSheet($('sheet'));
+  }
+
+  $('photoInput').onchange = async (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    try{
+      const dataUrl = await compressImageFile(file, 480, 0.72);
+      pendingPhoto = dataUrl; pendingPhotoRemoved = false;
+      $('photoPreview').style.backgroundImage = "url('" + dataUrl + "')";
+      $('photoPreview').textContent = '';
+      $('removePhotoBtn').style.display = 'inline-block';
+    }catch(err){ console.error(err); toast('Errore nel caricamento della foto'); }
+  };
+  $('removePhotoBtn').onclick = () => {
+    pendingPhoto = null; pendingPhotoRemoved = true;
+    $('photoPreview').style.backgroundImage = '';
+    $('photoPreview').textContent = '\uD83D\uDCE6';
+    $('removePhotoBtn').style.display = 'none';
+    $('photoInput').value = '';
+  };
+  $('cancelBtn').onclick = closeSheet;
+
+  $('saveBtn').onclick = () => {
+    if(!db){ toast('Salvataggio non disponibile'); return; }
+    const name = $('fName').value.trim();
+    if(!name){ toast('Inserisci il nome del prodotto'); $('fName').focus(); return; }
+    const categoryId = $('fCategory').value;
+    if(!categoryId){ toast('Crea prima una categoria'); return; }
+
+    let photoData = currentPhotoId;
+    if(pendingPhotoRemoved) photoData = null;
+    if(pendingPhoto) photoData = pendingPhoto;
+    const data = {
+      name,
+      qty: Number($('fQty').value) || 0,
+      price: Number($('fPrice').value) || 0,
+      categoryId,
+      supplier: $('fSupplier').value.trim(),
+      notes: $('fNotes').value.trim(),
+      photoData: photoData || null,
+      updatedAt: new Date().toISOString()
+    };
+    if(editingProductId){
+      fire(db.collection('products').doc(editingProductId).update(data));
+      toast('Prodotto aggiornato');
+    } else {
+      data.createdAt = data.updatedAt;
+      fire(db.collection('products').doc().set(data));
+      toast('Prodotto aggiunto');
+    }
+    closeSheet();
+  };
+
+  $('deleteBtn').onclick = async () => {
+    if(!editingProductId) return;
+    if(!(await showConfirm('Eliminare questo prodotto?', 'Elimina'))) { openSheet($('sheet')); return; }
+    fire(db.collection('products').doc(editingProductId).delete());
+    toast('Prodotto eliminato');
+    closeSheet();
+  };
+
+  init();
+})();
+</script>
 </body>
 </html>
