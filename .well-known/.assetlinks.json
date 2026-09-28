@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.gpaoli714_star.twa",
+        "sha256_cert_fingerprints": ["BB:87:EA:55:46:DC:64:01:AF:4A:BE:1D:C7:F4:65:FD:9B:B7:C0:D3:6C:5F:D4:97:C9:F9:92:D7:B5:79:7B:75"]
+      }
+    }]
